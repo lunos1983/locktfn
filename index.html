@@ -1258,8 +1258,52 @@
     const container = document.getElementById('goals-list');
     const empty     = document.getElementById('goals-empty');
     container.innerHTML = '';
-    empty.hidden = goals.length > 0;
 
+    if (currentView.startsWith('goal-')) {
+      empty.hidden = true;
+      const goalId = Number(currentView.replace('goal-', ''));
+      const g = goals.find(x => x.id === goalId);
+      if (!g) return;
+
+      const { done, total, pct } = goalProgress(g);
+      const header = document.createElement('div');
+      header.className = 'goal-card';
+      header.innerHTML = `
+        <div class="goal-card-header">
+          <span class="goal-card-name">${g.name}</span>
+          <span class="goal-card-pct">${pct}%</span>
+        </div>
+        <div class="goal-progress-track">
+          <div class="goal-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="goal-task-count">${done} von ${total} Tasks erledigt</span>
+      `;
+      container.appendChild(header);
+
+      const goalTasks = tasks.filter(t => t.goalId === goalId && !t.done);
+      if (goalTasks.length > 0) {
+        const ul = document.createElement('ul');
+        ul.className = 'task-list';
+        goalTasks.forEach(t => ul.appendChild(makeItem(t, t.focus)));
+        container.appendChild(ul);
+      }
+
+      const doneTasks = tasks.filter(t => t.goalId === goalId && t.done);
+      if (doneTasks.length > 0) {
+        const doneLabel = document.createElement('div');
+        doneLabel.className = 'section-label';
+        doneLabel.style.marginTop = '16px';
+        doneLabel.textContent = 'Erledigt';
+        container.appendChild(doneLabel);
+        const ul2 = document.createElement('ul');
+        ul2.className = 'task-list';
+        doneTasks.forEach(t => ul2.appendChild(makeItem(t, false)));
+        container.appendChild(ul2);
+      }
+      return;
+    }
+
+    empty.hidden = goals.length > 0;
     goals.forEach(g => {
       const { done, total, pct } = goalProgress(g);
       const card = document.createElement('div');
