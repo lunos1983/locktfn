@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lock The F**k In</title>
+</head>
+<body>
+<title>My Tasks</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='4' y='14' width='24' height='18' rx='3' fill='black'/><path d='M10 14V10a6 6 0 0 1 12 0v4' stroke='black' stroke-width='3' fill='none' stroke-linecap='round'/><circle cx='16' cy='23' r='2' fill='white'/><line x1='16' y1='25' x2='16' y2='28' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --bg:        #ffffff;
+    --fg:        #111827;
+    --muted:     #94a3b8;
+    --done:      #cbd5e1;
+    --divider:   #e5e9ef;
+    --input-bg:  #f3f4f6;
+    --input-ph:  #9ca3af;
+    --focus-dot: #8AE922;
+    --section-lbl: #374151;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0f172a;
+      --fg:        #e2e8f0;
+      --muted:     #64748b;
+      --done:      #475569;
+      --divider:   #1e293b;
+      --input-bg:  #1e293b;
+      --input-ph:  #64748b;
+      --focus-dot: #8AE922;
+      --section-lbl: #cbd5e1;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #0f172a;
+    --fg:        #e2e8f0;
+    --muted:     #64748b;
+    --done:      #475569;
+    --divider:   #1e293b;
+    --input-bg:  #1e293b;
+    --input-ph:  #64748b;
+    --focus-dot: #8AE922;
+    --section-lbl: #cbd5e1;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .main-row {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Left nav ── */
+  .side-nav {
+    width: 160px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 0 40px 24px;
+    gap: 2px;
+    overflow: hidden;
+  }
+  @media (max-width: 600px) { .side-nav { display: none; } }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-align: left;
+    transition: color 0.15s, background 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .nav-item:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 5%, transparent); }
+  .nav-item.active { color: var(--fg); font-weight: 600; }
+  .nav-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .nav-item.active .nav-dot { background: var(--focus-dot); }
+  .nav-item[data-view="focus"] .nav-dot { background: var(--focus-dot); opacity: 0.4; }
+  .nav-item[data-view="focus"].active .nav-dot { opacity: 1; }
+  .nav-item[data-view="progress"] .nav-dot { background: #f97316; opacity: 0.4; }
+  .nav-item[data-view="progress"].active .nav-dot { background: #f97316; opacity: 1; }
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 16px;
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+    padding-top: clamp(40px, 8vh, 80px);
+    padding-bottom: clamp(40px, 8vh, 80px);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  [hidden] { display: none !important; }
+  .section { display: flex; flex-direction: column; }
+
+  .section-header {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--section-lbl);
+    margin-bottom: 10px;
+    letter-spacing: 0.01em;
+  }
+
+  .task-list { list-style: none; }
+
+  .task-list li {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--divider);
+    cursor: grab;
+    user-select: none;
+  }
+  .task-list li:active { cursor: grabbing; }
+  .task-list li:first-child { border-top: 1px solid var(--divider); }
+
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 0;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--focus-dot);
+    flex-shrink: 0;
+    display: none;
+  }
+  .focus-section .task-list li:not(.done) .dot { display: block; }
+
+  .task-label {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--fg);
+  }
+  .task-list li.done .task-label {
+    color: var(--done);
+    text-decoration: line-through;
+    text-decoration-color: var(--done);
+  }
+
+  .btn-group {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .edit-btn,
+  .delete-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease;
+    padding: 0;
+  }
+  .task-list li:hover .task-row .edit-btn,
+  .task-list li:hover .task-row .delete-btn { opacity: 1; }
+  .edit-btn:hover           { color: var(--fg); }
+  .focus-set-btn:hover      { color: var(--focus-dot) !important; }
+  .focus-set-btn.focus-active { opacity: 1 !important; color: var(--focus-dot); }
+  .goal-assign-btn.assigned { opacity: 1 !important; color: var(--focus-dot); }
+  .goal-assign-btn:hover    { color: var(--focus-dot) !important; }
+  .delete-btn:hover         { color: #ef4444; }
+
+  .goal-picker {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--bg);
+    border: 1px solid var(--divider);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 200;
+    min-width: 150px;
+    overflow: hidden;
+    padding: 4px;
+  }
+  .goal-picker-opt {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--fg);
+    text-align: left;
+    cursor: pointer;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .goal-picker-opt:hover  { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+  .goal-picker-opt.active { color: var(--focus-dot); font-weight: 600; }
+
+  .task-list li .edit-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--fg);
+    caret-color: var(--fg);
+    padding: 0;
+    line-height: 1.5;
+  }
+
+  .input-bar {
+    flex-shrink: 0;
+    padding: 12px max(16px, env(safe-area-inset-left, 0px)) calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg);
+    border-top: 1px solid var(--divider);
+  }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  #new-task {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: var(--input-bg);
+    font-family: inherit;
+    font-size: 0.9375rem;
+    color: var(--fg);
+    caret-color: var(--fg);
+    padding: 14px 18px;
+    border-radius: 12px;
+    line-height: 1.5;
+  }
+  #new-task::placeholder { color: var(--input-ph); }
+
+  #import-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border: none;
+    background: var(--input-bg);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  #import-btn:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 10%, transparent); }
+
+  /* Modal */
+  #import-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #import-modal[hidden] { display: none !important; }
+  .import-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(2px);
+  }
+  .import-dialog {
+    position: relative;
+    background: var(--bg);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  }
+  .import-header {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  #import-textarea {
+    width: 100%;
+    border: 1px solid var(--divider);
+    border-radius: 10px;
+    background: var(--input-bg);
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--fg);
+    caret-color: var(--fg);
+    padding: 12px 14px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+  }
+  #import-textarea::placeholder { color: var(--input-ph); }
+  #import-textarea:focus { border-color: var(--focus-dot); }
+  .import-goal-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .import-goal-row label {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  #import-goal-select {
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.875rem;
+    padding: 9px 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  .import-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .import-actions button {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  #import-cancel { background: var(--input-bg); color: var(--muted); }
+  #import-cancel:hover { color: var(--fg); }
+  #import-confirm { background: var(--fg); color: var(--bg); }
+  #import-confirm:hover { opacity: 0.85; }
+
+  .empty-hint {
+    padding: 15px 0;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    border-top: 1px solid var(--divider);
+  }
+
+  .task-list li.dragging { opacity: 0.35; }
+  .task-list li.drag-over-top    { box-shadow: inset 0 2px 0 var(--focus-dot); }
+  .task-list li.drag-over-bottom { box-shadow: inset 0 -2px 0 var(--focus-dot); }
+
+  .focus-section { min-height: 60px; }
+  .focus-drop-zone, .progress-drop-zone {
+    min-height: 48px;
+    border-radius: 8px;
+    transition: background 0.1s ease, outline 0.1s ease;
+  }
+  .focus-drop-zone.drop-active, .progress-drop-zone.drop-active {
+    outline: 2px dashed var(--focus-dot);
+    outline-offset: 2px;
+    background: color-mix(in srgb, var(--focus-dot) 6%, transparent);
+  }
+
+  .subtask-panel {
+    padding: 8px 0 12px 18px;
+    border-top: 1px solid var(--divider);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    cursor: default;
+    user-select: text;
+  }
+
+  .subtask-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    cursor: grab;
+    user-select: none;
+    position: relative;
+  }
+  .subtask-row:active { cursor: grabbing; }
+  .subtask-row.dragging { opacity: 0.35; }
+  .subtask-row.sub-drag-top    { box-shadow: inset 0 2px 0 var(--focus-dot); }
+  .subtask-row.sub-drag-bottom { box-shadow: inset 0 -2px 0 var(--focus-dot); }
+
+  .subtask-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .subtask-row:first-child .subtask-dot { background: var(--focus-dot); }
+  .subtask-row.done .subtask-dot { background: var(--done); }
+
+  .subtask-lbl {
+    font-size: 0.875rem;
+    color: var(--fg);
+    line-height: 1.4;
+  }
+
+  .subtask-row.done .subtask-lbl {
+    color: var(--done);
+    text-decoration: line-through;
+    text-decoration-color: var(--done);
+  }
+
+  .subtask-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 4px;
+  }
+  .subtask-panel.empty .subtask-input-row { padding-top: 4px; }
+
+  .subtask-input-row input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.875rem;
+    color: var(--fg);
+    caret-color: var(--fg);
+    padding: 0;
+  }
+  .subtask-input-row input::placeholder { color: var(--muted); transition: color 0.15s ease; }
+  .subtask-input-row input:hover::placeholder { color: var(--fg); }
+  .subtask-input-row input:focus::placeholder { color: transparent; }
+
+  .sub-badge {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-left: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sub-action-btn { opacity: 0; width: 22px !important; height: 22px !important; }
+  .sub-action-btn svg { width: 12px; height: 12px; }
+  .sub-action-btn.edit-btn svg { width: 16px; height: 16px; }
+  .subtask-row:hover .sub-action-btn { opacity: 1; }
+
+  .subtask-btn.active { color: var(--fg); opacity: 1 !important; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .task-list li { transition: opacity 0.15s ease, box-shadow 0.1s ease; }
+  }
+
+  /* ── Nav divider ── */
+  .nav-divider {
+    height: 1px;
+    background: var(--divider);
+    margin: 10px 10px 10px 0;
+  }
+
+  .nav-section-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 10px 2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 4px;
+  }
+  .nav-add-btn {
+    width: 20px; height: 20px;
+    border: none; background: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s;
+  }
+  .nav-add-btn:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent); }
+
+  .nav-goal-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 10px;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-align: left;
+    transition: color 0.15s, background 0.15s;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+  }
+  .nav-goal-item:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 5%, transparent); }
+  .nav-goal-item.active { color: var(--fg); font-weight: 600; }
+  .nav-goal-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .nav-goal-pct {
+    font-size: 0.6875rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .nav-goal-item.active .nav-goal-pct { color: var(--fg); }
+
+  /* ── Goals view ── */
+  .goal-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 0 20px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .goal-card:first-child { border-top: 1px solid var(--divider); }
+  .goal-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .goal-card-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--fg);
+    flex: 1;
+  }
+  .goal-card-pct {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .goal-delete-btn {
+    width: 24px; height: 24px;
+    border: none; background: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .goal-card:hover .goal-delete-btn { opacity: 1; }
+  .goal-delete-btn:hover { color: #ef4444; }
+
+  .goal-progress-track {
+    height: 5px;
+    background: var(--divider);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .goal-progress-fill {
+    height: 100%;
+    background: var(--focus-dot);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+  .goal-task-count {
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .goal-new-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: var(--input-bg);
+    font-family: inherit;
+    font-size: 0.9375rem;
+    color: var(--fg);
+    caret-color: var(--fg);
+    padding: 12px 16px;
+    border-radius: 10px;
+    line-height: 1.5;
+    margin-top: 8px;
+  }
+  .goal-new-input::placeholder { color: var(--input-ph); }
+
+  .goals-empty {
+    padding: 32px 0;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    text-align: center;
+  }
+</style>
+
+<div class="main-row">
+<nav class="side-nav" id="side-nav">
+  <button class="nav-item active" data-view="focus"><span class="nav-dot"></span>Focus now</button>
+  <button class="nav-item" data-view="progress"><span class="nav-dot"></span>Later</button>
+  <button class="nav-item" data-view="done"><span class="nav-dot"></span>Done</button>
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Goals <button class="nav-add-btn" id="nav-add-goal" title="Goal hinzufügen"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+  <div id="nav-goals-list"></div>
+</nav>
+<div class="scroll-area" id="scroll-area">
+<div class="container">
+  <div class="section focus-section">
+    <div class="section-header">Focus now</div>
+    <div class="focus-drop-zone" id="focus-zone">
+      <ul class="task-list" id="focus-list"></ul>
+      <p class="empty-hint" id="focus-empty" hidden>Drag a task here to focus on it.</p>
+    </div>
+  </div>
+
+  <div class="section" id="progress-section">
+    <div class="section-header">In Progress</div>
+    <div class="progress-drop-zone" id="progress-zone">
+      <ul class="task-list" id="progress-list"></ul>
+      <p class="empty-hint" id="progress-empty">Drag a task here to mark it in progress.</p>
+    </div>
+  </div>
+
+  <div class="section" id="later-section">
+    <div class="section-header">Later</div>
+    <ul class="task-list" id="later-list"></ul>
+    <p class="empty-hint" id="later-empty" hidden>All done!</p>
+  </div>
+
+  <div class="section" id="done-today-section" hidden>
+    <div class="section-header">Done today</div>
+    <ul class="task-list" id="done-today-list"></ul>
+  </div>
+  <div class="section" id="done-all-section" hidden>
+    <div class="section-header">All done</div>
+    <ul class="task-list" id="done-all-list"></ul>
+  </div>
+
+  <!-- Goals view (inside container, hidden by default) -->
+  <div id="goals-view-section" hidden>
+    <div id="goals-list"></div>
+    <p class="goals-empty" id="goals-empty">Noch keine Goals — klick auf + in der Nav um ein Ziel zu erstellen.</p>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="input-bar">
+  <div class="input-row">
+    <input id="new-task" type="text" placeholder="Add a new task and press Enter..." autocomplete="off" spellcheck="false">
+    <button id="import-btn" title="Tasks importieren">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1 L8 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M4.5 7 L8 10.5 L11.5 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 13 L14 13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Import
+    </button>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div id="import-modal" hidden>
+  <div class="import-backdrop"></div>
+  <div class="import-dialog">
+    <div class="import-header">Tasks importieren</div>
+    <textarea id="import-textarea" placeholder="Eine Task pro Zeile:&#10;Subdomain anlegen&#10;MySQL-Datenbank anlegen&#10;SSH-Zugangsdaten raussuchen" rows="7"></textarea>
+    <div class="import-goal-row">
+      <label>Goal zuweisen (optional)</label>
+      <select id="import-goal-select">
+        <option value="">— Kein Ziel —</option>
+      </select>
+    </div>
+    <div class="import-actions">
+      <button id="import-cancel">Abbrechen</button>
+      <button id="import-confirm">Importieren</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const focusZone       = document.getElementById('focus-zone');
+  const focusList       = document.getElementById('focus-list');
+  const progressSection = document.getElementById('progress-section');
+  const progressZone    = document.getElementById('progress-zone');
+  const progressList    = document.getElementById('progress-list');
+  const progressEmpty   = document.getElementById('progress-empty');
+  const laterList       = document.getElementById('later-list');
+  const doneTodaySection = document.getElementById('done-today-section');
+  const doneTodayList    = document.getElementById('done-today-list');
+  const doneAllSection   = document.getElementById('done-all-section');
+  const doneAllList      = document.getElementById('done-all-list');
+  const focusEmpty      = document.getElementById('focus-empty');
+  const laterEmpty      = document.getElementById('later-empty');
+  const input           = document.getElementById('new-task');
+
+  const KEY = 'tasks-v2';
+  let tasks = [];
+  let dragId = null, dragOver = null, dragToFocus = false, dragToProgress = false;
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch {} }
+  function load() { try { const r = localStorage.getItem(KEY); if (r) tasks = JSON.parse(r); } catch {} }
+  function ensureIds() { tasks.forEach((t, i) => { if (!t.id) t.id = Date.now() + i; }); }
+
+  const PENCIL_SVG  = `<svg width="18" height="18" viewBox="0 0 14 14" fill="none"><path d="M9.5 2L12 4.5L4.5 12H2V9.5L9.5 2Z" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="7.5" y1="4" x2="10" y2="6.5" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/></svg>`;
+  const CROSS_SVG   = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="1" y1="1" x2="13" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="13" y1="1" x2="1" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+  const SUBTASK_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><line x1="7.5" y1="4.5" x2="14" y2="4.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><rect x="1.5" y="9.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><line x1="7.5" y1="11.5" x2="14" y2="11.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>`;
+  const FOCUS_SVG   = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 1 L4 9 H8 L6 15 L12 7 H8.5 Z" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const ROCKET_SVG  = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5 C5.5 3.5 4.5 7 4.5 9.5 L8 11.5 L11.5 9.5 C11.5 7 10.5 3.5 8 1.5Z" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.5" r="1.3" stroke="currentColor" stroke-width="1"/><path d="M4.5 9.5 L2.5 11.5 L4.5 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 9.5 L13.5 11.5 L11.5 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 11.5 C6 13.5 8 14.5 8 14.5 C8 14.5 10 13.5 9.5 11.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+
+  function makeItem(t, inFocus) {
+    const li  = document.createElement('li');
+    if (t.done) li.classList.add('done');
+    li.dataset.id = t.id;
+
+    const row = document.createElement('div');
+    row.className = 'task-row';
+    li.appendChild(row);
+
+    const dot = document.createElement('span');
+    const lbl = document.createElement('span');
+    dot.className = 'dot';
+    lbl.className = 'task-label';
+    lbl.textContent = t.text;
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.innerHTML = PENCIL_SVG;
+    editBtn.title = 'Bearbeiten';
+    editBtn.addEventListener('click', e => { e.stopPropagation(); startEdit(t.id, lbl, li); });
+
+    const subBtn = document.createElement('button');
+    subBtn.className = 'edit-btn subtask-btn';
+    subBtn.innerHTML = SUBTASK_SVG;
+    subBtn.title = 'Subtasks';
+    if (t.open) subBtn.classList.add('active');
+    subBtn.addEventListener('click', e => { e.stopPropagation(); toggleSubtasks(t.id); });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn';
+    delBtn.innerHTML = CROSS_SVG;
+    delBtn.title = 'Löschen';
+    delBtn.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
+
+    const grp = document.createElement('div');
+    grp.className = 'btn-group';
+
+    if (!t.done) {
+      const focusBtn = document.createElement('button');
+      focusBtn.className = 'edit-btn focus-set-btn' + (inFocus ? ' focus-active' : '');
+      focusBtn.innerHTML = FOCUS_SVG;
+      focusBtn.title = inFocus ? 'Focus entfernen' : 'Als Focus setzen';
+      focusBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const tgt = tasks.find(x => x.id === t.id);
+        if (inFocus) {
+          if (tgt) tgt.focus = false;
+        } else {
+          tasks.forEach(x => { x.focus = false; });
+          if (tgt) { tgt.focus = true; tgt.inProgress = false; tgt.done = false; }
+          currentView = 'focus';
+          navItems.forEach(b => b.classList.toggle('active', b.dataset.view === 'focus'));
+        }
+        save(); render();
+      });
+      grp.appendChild(focusBtn);
+    }
+
+    if (!t.done) {
+      const rocketBtn = document.createElement('button');
+      rocketBtn.className = 'edit-btn goal-assign-btn' + (t.goalId ? ' assigned' : '');
+      rocketBtn.innerHTML = ROCKET_SVG;
+      const assignedGoal = t.goalId ? goals.find(g => g.id === t.goalId) : null;
+      rocketBtn.title = assignedGoal ? assignedGoal.name : 'Goal zuweisen';
+      rocketBtn.addEventListener('click', e => { e.stopPropagation(); showGoalPicker(t, grp); });
+      grp.appendChild(rocketBtn);
+    }
+
+    grp.appendChild(subBtn);
+    grp.appendChild(editBtn);
+    grp.appendChild(delBtn);
+
+    const subs = t.subtasks || [];
+    if (subs.length > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'sub-badge';
+      badge.textContent = `${subs.filter(s => s.done).length}/${subs.length}`;
+      lbl.after(badge);
+    }
+
+    row.appendChild(dot);
+    row.appendChild(lbl);
+    row.appendChild(grp);
+
+    li._taskId = t.id;
+    row.addEventListener('click', e => { if (!li.classList.contains('dragging')) toggleDone(t.id); });
+
+    li.draggable = true;
+    li.addEventListener('dragstart', e => {
+      dragId = t.id; dragOver = null; dragToFocus = false; dragToProgress = false;
+      setTimeout(() => li.classList.add('dragging'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    li.addEventListener('dragend', () => { li.classList.remove('dragging'); clearHighlights(); applyDrop(); });
+
+    if (!inFocus) {
+      li.addEventListener('dragover', e => {
+        e.preventDefault();
+        const pos = e.clientY < li.getBoundingClientRect().top + li.offsetHeight / 2 ? 'top' : 'bottom';
+        dragOver = { id: t.id, pos }; dragToFocus = false; dragToProgress = false;
+        clearHighlights();
+        li.classList.add(pos === 'top' ? 'drag-over-top' : 'drag-over-bottom');
+      });
+    }
+
+    return li;
+  }
+
+  function clearHighlights() {
+    document.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el =>
+      el.classList.remove('drag-over-top', 'drag-over-bottom'));
+    focusZone.classList.remove('drop-active');
+    progressZone.classList.remove('drop-active');
+  }
+
+  function applyDrop() {
+    if (dragId === null) return;
+    if (dragToFocus) {
+      tasks.forEach(t => { t.focus = false; });
+      const t = tasks.find(t => t.id === dragId);
+      if (t && !t.done) { t.focus = true; t.inProgress = false; }
+    } else if (dragToProgress) {
+      const t = tasks.find(t => t.id === dragId);
+      if (t && !t.done) { t.inProgress = true; t.focus = false; }
+    } else if (dragOver) {
+      const fromIdx = tasks.findIndex(t => t.id === dragId);
+      const toIdx   = tasks.findIndex(t => t.id === dragOver.id);
+      if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+        const [item] = tasks.splice(fromIdx, 1);
+        item.focus = false; item.inProgress = false;
+        const insertAt = tasks.findIndex(t => t.id === dragOver.id);
+        tasks.splice(insertAt + (dragOver.pos === 'bottom' ? 1 : 0), 0, item);
+      }
+    }
+    dragId = null; dragOver = null; dragToFocus = false; dragToProgress = false;
+    save(); render();
+  }
+
+  function startEdit(id, lbl, li) {
+    const t = tasks.find(t => t.id === id);
+    if (!t) return;
+    li.draggable = false;
+    const inp = document.createElement('input');
+    inp.className = 'edit-input';
+    inp.value = t.text;
+    lbl.replaceWith(inp);
+    inp.focus(); inp.select();
+    function commit() { const v = inp.value.trim(); if (v) t.text = v; save(); render(); }
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') render();
+    });
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('click', e => e.stopPropagation());
+  }
+
+  function toggleSubtasks(id) {
+    const t = tasks.find(t => t.id === id);
+    if (!t) return;
+    const opening = !t.open;
+    t.open = !t.open;
+    save(); render();
+    if (opening) {
+      requestAnimationFrame(() => {
+        const li = document.querySelector(`li[data-id="${id}"]`);
+        if (li) { const inp = li.querySelector('.subtask-input-row input'); if (inp) inp.focus(); }
+      });
+    }
+  }
+
+  function makeSubPanel(t) {
+    if (!t.subtasks) t.subtasks = [];
+    const panel = document.createElement('div');
+    panel.className = 'subtask-panel' + (t.subtasks.length === 0 ? ' empty' : '');
+
+    let subDragId = null, subDragOver = null;
+
+    function clearSubHighlights() {
+      panel.querySelectorAll('.sub-drag-top, .sub-drag-bottom').forEach(el =>
+        el.classList.remove('sub-drag-top', 'sub-drag-bottom'));
+    }
+
+    t.subtasks.forEach((s) => {
+      const row = document.createElement('div');
+      row.className = 'subtask-row' + (s.done ? ' done' : '');
+      row.draggable = true;
+      const dot = document.createElement('span');
+      dot.className = 'subtask-dot';
+      const lbl = document.createElement('span');
+      lbl.className = 'subtask-lbl';
+      lbl.textContent = s.text;
+
+      const subEditBtn = document.createElement('button');
+      subEditBtn.className = 'edit-btn sub-action-btn';
+      subEditBtn.innerHTML = PENCIL_SVG;
+      subEditBtn.title = 'Bearbeiten';
+      subEditBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        row.draggable = false;
+        const inp = document.createElement('input');
+        inp.className = 'edit-input';
+        inp.value = s.text;
+        lbl.replaceWith(inp);
+        inp.focus(); inp.select();
+        function commit() { const v = inp.value.trim(); if (v) s.text = v; save(); render(); }
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') render(); });
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('click', e => e.stopPropagation());
+      });
+
+      const subDelBtn = document.createElement('button');
+      subDelBtn.className = 'delete-btn sub-action-btn';
+      subDelBtn.innerHTML = CROSS_SVG;
+      subDelBtn.title = 'Löschen';
+      subDelBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        t.subtasks = t.subtasks.filter(x => x.id !== s.id);
+        save(); render();
+      });
+
+      const subGrp = document.createElement('div');
+      subGrp.className = 'btn-group sub-btn-group';
+      subGrp.appendChild(subEditBtn);
+      subGrp.appendChild(subDelBtn);
+
+      row.appendChild(dot);
+      row.appendChild(lbl);
+      row.appendChild(subGrp);
+
+      row.addEventListener('click', () => {
+        s.done = !s.done;
+        if (s.done) {
+          const idx = t.subtasks.indexOf(s);
+          t.subtasks.splice(idx, 1);
+          t.subtasks.push(s);
+        }
+        save(); render();
+      });
+
+      row.addEventListener('dragstart', e => {
+        subDragId = s.id;
+        e.dataTransfer.effectAllowed = 'move';
+        e.stopPropagation();
+        setTimeout(() => row.classList.add('dragging'), 0);
+      });
+      row.addEventListener('dragend', e => {
+        e.stopPropagation();
+        row.classList.remove('dragging');
+        clearSubHighlights();
+        if (subDragId !== null && subDragOver !== null) {
+          const fromIdx = t.subtasks.findIndex(x => x.id === subDragId);
+          const toIdx   = t.subtasks.findIndex(x => x.id === subDragOver.id);
+          if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+            const [item] = t.subtasks.splice(fromIdx, 1);
+            const insertAt = t.subtasks.findIndex(x => x.id === subDragOver.id);
+            t.subtasks.splice(insertAt + (subDragOver.pos === 'bottom' ? 1 : 0), 0, item);
+          }
+          save(); render();
+        }
+        subDragId = null; subDragOver = null;
+      });
+      row.addEventListener('dragover', e => {
+        e.preventDefault(); e.stopPropagation();
+        const pos = e.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2 ? 'top' : 'bottom';
+        subDragOver = { id: s.id, pos };
+        clearSubHighlights();
+        row.classList.add(pos === 'top' ? 'sub-drag-top' : 'sub-drag-bottom');
+      });
+
+      panel.appendChild(row);
+    });
+
+    const inputRow = document.createElement('div');
+    inputRow.className = 'subtask-input-row';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = '+ add subtask';
+    inp.addEventListener('click', e => e.stopPropagation());
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const v = inp.value.trim();
+        if (v) {
+          if (!t.subtasks) t.subtasks = [];
+          t.subtasks.push({ id: Date.now(), text: v, done: false });
+          save(); render();
+        }
+      }
+      if (e.key === 'Escape') inp.blur();
+    });
+    inputRow.appendChild(inp);
+    panel.appendChild(inputRow);
+    return panel;
+  }
+
+  function showGoalPicker(task, grp) {
+    document.querySelectorAll('.goal-picker').forEach(p => p.remove());
+    if (!goals.length) return;
+    const picker = document.createElement('div');
+    picker.className = 'goal-picker';
+    const noneOpt = document.createElement('button');
+    noneOpt.className = 'goal-picker-opt' + (!task.goalId ? ' active' : '');
+    noneOpt.textContent = '— Kein Ziel —';
+    noneOpt.addEventListener('click', e => { e.stopPropagation(); task.goalId = null; save(); render(); picker.remove(); });
+    picker.appendChild(noneOpt);
+    goals.forEach(g => {
+      const opt = document.createElement('button');
+      opt.className = 'goal-picker-opt' + (task.goalId === g.id ? ' active' : '');
+      opt.textContent = g.name;
+      opt.addEventListener('click', e => { e.stopPropagation(); task.goalId = g.id; save(); render(); picker.remove(); });
+      picker.appendChild(opt);
+    });
+    grp.appendChild(picker);
+    setTimeout(() => {
+      document.addEventListener('click', function closePicker() {
+        picker.remove();
+        document.removeEventListener('click', closePicker);
+      }, { once: true });
+    }, 0);
+  }
+
+  function deleteTask(id) { tasks = tasks.filter(t => t.id !== id); save(); render(); }
+
+  function toggleDone(id) {
+    const t = tasks.find(t => t.id === id);
+    if (!t) return;
+    t.done = !t.done;
+    if (t.done) { t.focus = false; t.inProgress = false; t.doneAt = Date.now(); }
+    else { t.doneAt = null; }
+    save(); render();
+  }
+
+  function render() {
+    const seen = new Set();
+    tasks = tasks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
+    focusList.innerHTML    = '';
+    progressList.innerHTML = '';
+    laterList.innerHTML    = '';
+    doneTodayList.innerHTML = '';
+    doneAllList.innerHTML   = '';
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    const focusTask    = tasks.find(t => t.focus && !t.done);
+    const progressArr  = tasks.filter(t => t.inProgress && !t.done && !t.focus);
+    const laterArr     = tasks.filter(t => !t.done && !t.focus && !t.inProgress);
+    const doneTodayArr = tasks.filter(t => t.done && t.doneAt && (now - t.doneAt) < DAY);
+    const doneAllArr   = tasks.filter(t => t.done && (!t.doneAt || (now - t.doneAt) >= DAY));
+    function appendWithPanel(list, t, inFocus) {
+      const li = makeItem(t, inFocus);
+      if (t.open) li.appendChild(makeSubPanel(t));
+      list.appendChild(li);
+    }
+    if (focusTask) appendWithPanel(focusList, focusTask, true);
+    progressArr.forEach(t  => appendWithPanel(progressList, t, false));
+    laterArr.forEach(t     => appendWithPanel(laterList, t, false));
+    doneTodayArr.forEach(t => appendWithPanel(doneTodayList, t, false));
+    doneAllArr.forEach(t   => appendWithPanel(doneAllList, t, false));
+    focusEmpty.hidden       = !!focusTask;
+    laterEmpty.hidden       = laterArr.length > 0;
+    progressEmpty.hidden    = progressArr.length > 0;
+    doneTodaySection.hidden = doneTodayArr.length === 0;
+    doneAllSection.hidden   = doneAllArr.length === 0;
+  }
+
+  function addTask(text) {
+    text = text.trim();
+    if (!text) return;
+    tasks.push({ id: Date.now(), text, done: false, focus: false, inProgress: false });
+    save(); render();
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { addTask(input.value); input.value = ''; }
+  });
+
+  focusZone.addEventListener('dragover', e => {
+    const src = tasks.find(t => t.id === dragId);
+    if (!src || src.done) return;
+    e.preventDefault();
+    dragToFocus = true; dragOver = null; dragToProgress = false;
+    clearHighlights();
+    focusZone.classList.add('drop-active');
+  });
+  focusZone.addEventListener('dragleave', e => {
+    if (focusZone.contains(e.relatedTarget)) return;
+    focusZone.classList.remove('drop-active');
+    dragToFocus = false;
+  });
+
+  progressZone.addEventListener('dragover', e => {
+    const src = tasks.find(t => t.id === dragId);
+    if (!src || src.done) return;
+    e.preventDefault();
+    dragToProgress = true; dragOver = null; dragToFocus = false;
+    clearHighlights();
+    progressZone.classList.add('drop-active');
+  });
+  progressZone.addEventListener('dragleave', e => {
+    if (progressZone.contains(e.relatedTarget)) return;
+    progressZone.classList.remove('drop-active');
+    dragToProgress = false;
+  });
+
+  load(); ensureIds();
+  if (tasks.length === 0) {
+    tasks = [
+      { id: 1, text: 'Build the HTML page',      done: false, focus: true  },
+      { id: 2, text: 'Design the Figma mockup',  done: true,  focus: false },
+      { id: 3, text: 'Add Enter key interaction', done: false, focus: false },
+      { id: 4, text: 'Test on mobile',            done: false, focus: false },
+    ];
+    save();
+  }
+  // ── Side nav / view filter ──
+  let currentView = 'focus'; // 'focus' | 'progress' | 'done'
+
+  const navItems = document.querySelectorAll('.nav-item');
+
+  function applyView() {
+    const focusSec     = document.querySelector('.focus-section');
+    const progressSec  = document.getElementById('progress-section');
+    const laterSec     = document.getElementById('later-section');
+    const doneTodaySec = document.getElementById('done-today-section');
+    const doneAllSec   = document.getElementById('done-all-section');
+    const goalsSec     = document.getElementById('goals-view-section');
+
+    const isGoals = currentView === 'goals' || currentView.startsWith('goal-');
+
+    const show = el => { if (el) el.hidden = false; };
+    const hide = el => { if (el) el.hidden = true; };
+
+    if (isGoals) {
+      hide(focusSec); hide(progressSec); hide(laterSec);
+      hide(doneTodaySec); hide(doneAllSec);
+      show(goalsSec);
+      renderGoalsView();
+    } else {
+      hide(goalsSec);
+      if (currentView === 'focus') {
+        show(focusSec); hide(progressSec); hide(laterSec);
+        hide(doneTodaySec); hide(doneAllSec);
+      } else if (currentView === 'progress') {
+        hide(focusSec); show(progressSec); show(laterSec);
+        hide(doneTodaySec); hide(doneAllSec);
+      } else if (currentView === 'done') {
+        hide(focusSec); hide(progressSec); hide(laterSec);
+        show(doneTodaySec); show(doneAllSec);
+      }
+    }
+  }
+
+  // ── Goals ── (declared BEFORE render() to avoid TDZ error)
+  const GOALS_KEY = 'goals-v1';
+  let goals = [];
+
+  const _origRender = render;
+  render = function() { _origRender(); applyView(); renderGoalsNav(); };
+
+  render();
+  input.focus();
+
+  function saveGoals() { try { localStorage.setItem(GOALS_KEY, JSON.stringify(goals)); } catch {} }
+  function loadGoals() { try { const r = localStorage.getItem(GOALS_KEY); if (r) goals = JSON.parse(r); } catch {} }
+
+  function goalProgress(g) {
+    const linked = tasks.filter(t => t.goalId === g.id);
+    if (linked.length === 0) return { done: 0, total: 0, pct: 0 };
+    const done = linked.filter(t => t.done).length;
+    return { done, total: linked.length, pct: Math.round(done / linked.length * 100) };
+  }
+
+  function renderGoalsNav() {
+    const list = document.getElementById('nav-goals-list');
+    if (!list) return;
+    list.innerHTML = '';
+    goals.forEach(g => {
+      const { pct } = goalProgress(g);
+      const btn = document.createElement('button');
+      btn.className = 'nav-goal-item' + (currentView === 'goal-' + g.id ? ' active' : '');
+      btn.dataset.goalId = g.id;
+      btn.innerHTML = `<span class="nav-goal-name">${g.name}</span><span class="nav-goal-pct">${pct}%</span>`;
+      btn.addEventListener('click', () => switchToGoal(g.id));
+      list.appendChild(btn);
+    });
+  }
+
+  function renderGoalsView() {
+    const container = document.getElementById('goals-list');
+    const empty     = document.getElementById('goals-empty');
+    container.innerHTML = '';
+    empty.hidden = goals.length > 0;
+
+    goals.forEach(g => {
+      const { done, total, pct } = goalProgress(g);
+      const card = document.createElement('div');
+      card.className = 'goal-card';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'goal-delete-btn';
+      delBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><line x1="1" y1="1" x2="13" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="13" y1="1" x2="1" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+      delBtn.title = 'Goal löschen';
+      delBtn.addEventListener('click', () => {
+        if (confirm(`Goal "${g.name}" wirklich löschen?`)) {
+          goals = goals.filter(x => x.id !== g.id);
+          tasks.forEach(t => { if (t.goalId === g.id) t.goalId = null; });
+          save(); saveGoals();
+          if (currentView === 'goal-' + g.id) switchView('focus');
+          else { renderGoalsView(); renderGoalsNav(); }
+        }
+      });
+
+      card.innerHTML = `
+        <div class="goal-card-header">
+          <span class="goal-card-name">${g.name}</span>
+          <span class="goal-card-pct">${pct}%</span>
+        </div>
+        <div class="goal-progress-track">
+          <div class="goal-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="goal-task-count">${done} von ${total} Tasks erledigt</span>
+      `;
+      card.querySelector('.goal-card-header').appendChild(delBtn);
+      container.appendChild(card);
+    });
+  }
+
+  function switchToGoal(goalId) {
+    currentView = 'goal-' + goalId;
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-goal-item').forEach(b =>
+      b.classList.toggle('active', b.dataset.goalId == goalId));
+    render();
+  }
+
+  function switchView(view) {
+    currentView = view;
+    document.querySelectorAll('.nav-item').forEach(b =>
+      b.classList.toggle('active', b.dataset.view === view));
+    document.querySelectorAll('.nav-goal-item').forEach(b => b.classList.remove('active'));
+    render();
+  }
+
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+
+  // + button → switch to goals view, then show input
+  document.getElementById('nav-add-goal').addEventListener('click', e => {
+    e.stopPropagation();
+    if (currentView !== 'goals' && !currentView.startsWith('goal-')) {
+      currentView = 'goals';
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.nav-goal-item').forEach(b => b.classList.remove('active'));
+      render();
+    }
+    const section = document.getElementById('goals-view-section');
+    if (section.querySelector('.goal-new-input')) return;
+    const inp = document.createElement('input');
+    inp.className = 'goal-new-input';
+    inp.placeholder = 'Goal Name eingeben…';
+    section.appendChild(inp);
+    inp.focus();
+    let committed = false;
+    function commit() {
+      if (committed) return; committed = true;
+      const name = inp.value.trim();
+      inp.remove();
+      if (!name) return;
+      goals.push({ id: Date.now(), name });
+      saveGoals(); render();
+    }
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { inp.remove(); }
+    });
+    inp.addEventListener('blur', commit);
+  });
+
+  loadGoals();
+  renderGoalsNav();
+
+  // ── Import ──
+  const importModal    = document.getElementById('import-modal');
+  const importTextarea = document.getElementById('import-textarea');
+  const importSelect   = document.getElementById('import-goal-select');
+  const importBackdrop = document.querySelector('.import-backdrop');
+
+  function openImportModal() {
+    importSelect.innerHTML = '<option value="">— Kein Ziel —</option>';
+    goals.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.name;
+      importSelect.appendChild(opt);
+    });
+    importTextarea.value = '';
+    importModal.hidden = false;
+    requestAnimationFrame(() => importTextarea.focus());
+  }
+
+  function closeImportModal() { importModal.hidden = true; }
+
+  document.getElementById('import-btn').addEventListener('click', openImportModal);
+  document.getElementById('import-cancel').addEventListener('click', closeImportModal);
+  importBackdrop.addEventListener('click', closeImportModal);
+
+  document.getElementById('import-confirm').addEventListener('click', () => {
+    const lines = importTextarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) { closeImportModal(); return; }
+    const goalId = importSelect.value ? Number(importSelect.value) : null;
+    lines.forEach(text => {
+      tasks.push({ id: Date.now() + Math.random(), text, done: false, focus: false, inProgress: false, goalId });
+    });
+    save(); render();
+    closeImportModal();
+  });
+
+  importTextarea.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeImportModal();
+  });
+</script>
+
+</body>
+</html>
