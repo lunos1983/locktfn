@@ -1,0 +1,21 @@
+name: Deploy to Webhostone
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy via git push
+        env:
+          SSHPASS: ${{ secrets.WEBHOSTONE_PASSWORD }}
+        run: |
+          sudo apt-get install -y sshpass
+          git remote add webhostone xa5413@xa5.serverdomain.org:~/repo/locktfn.git
+          GIT_SSH_COMMAND="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git push webhostone main
