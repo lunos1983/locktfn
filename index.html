@@ -142,6 +142,17 @@
     color: var(--section-lbl);
     margin-bottom: 10px;
     letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .focus-section .section-header::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--focus-dot);
+    flex-shrink: 0;
   }
 
   .task-list { list-style: none; }
@@ -163,15 +174,7 @@
     padding: 15px 0;
   }
 
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--focus-dot);
-    flex-shrink: 0;
-    display: none;
-  }
-  .focus-section .task-list li:not(.done) .dot { display: block; }
+  .dot { display: none; }
 
   .task-label {
     font-size: 1rem;
@@ -453,7 +456,8 @@
   .subtask-row.sub-drag-top    { box-shadow: inset 0 2px 0 var(--focus-dot); }
   .subtask-row.sub-drag-bottom { box-shadow: inset 0 -2px 0 var(--focus-dot); }
 
-  .subtask-dot {
+  .subtask-dot { display: none !important; }
+  .subtask-dot-hidden {
     width: 5px;
     height: 5px;
     border-radius: 50%;
