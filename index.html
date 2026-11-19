@@ -993,13 +993,9 @@
       subPromoteBtn.title = 'Als eigenen Task hochstufen';
       subPromoteBtn.addEventListener('click', e => {
         e.stopPropagation();
-        const newTask = { id: Date.now(), text: s.text, done: s.done, focus: true, inProgress: false, goalId: t.goalId || null };
+        const newTask = { id: Date.now(), text: s.text, done: s.done, focus: false, inProgress: false, goalId: t.goalId || null };
         t.subtasks = t.subtasks.filter(x => x.id !== s.id);
-        tasks.forEach(x => { x.focus = false; });
-        newTask.focus = true;
         tasks.push(newTask);
-        currentView = 'focus';
-        navItems.forEach(b => b.classList.toggle('active', b.dataset.view === 'focus'));
         save(); render();
       });
 
