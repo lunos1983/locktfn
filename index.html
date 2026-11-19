@@ -988,8 +988,25 @@
         save(); render();
       });
 
+      const subPromoteBtn = document.createElement('button');
+      subPromoteBtn.className = 'edit-btn sub-action-btn';
+      subPromoteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 11V3M3.5 6.5L7 3L10.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      subPromoteBtn.title = 'Als eigenen Task hochstufen';
+      subPromoteBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const newTask = { id: Date.now(), text: s.text, done: s.done, focus: true, inProgress: false, goalId: t.goalId || null };
+        t.subtasks = t.subtasks.filter(x => x.id !== s.id);
+        tasks.forEach(x => { x.focus = false; });
+        newTask.focus = true;
+        tasks.push(newTask);
+        currentView = 'focus';
+        navItems.forEach(b => b.classList.toggle('active', b.dataset.view === 'focus'));
+        save(); render();
+      });
+
       const subGrp = document.createElement('div');
       subGrp.className = 'btn-group sub-btn-group';
+      subGrp.appendChild(subPromoteBtn);
       subGrp.appendChild(subEditBtn);
       subGrp.appendChild(subDelBtn);
 
