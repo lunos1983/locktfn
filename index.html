@@ -958,7 +958,11 @@
         el.classList.remove('sub-drag-top', 'sub-drag-bottom'));
     }
 
-    t.subtasks.forEach((s) => {
+    const sortedSubs = [...t.subtasks].sort((a, b) => {
+      const rank = x => x.done ? 2 : (x.wait ? 1 : 0);
+      return rank(a) - rank(b);
+    });
+    sortedSubs.forEach((s) => {
       const row = document.createElement('div');
       row.className = 'subtask-row' + (s.done ? ' done' : '') + (s.wait && !s.done ? ' sub-waiting' : '');
       row.draggable = true;
