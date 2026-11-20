@@ -174,7 +174,35 @@
     padding: 15px 0;
   }
 
-  .dot { display: none; }
+  .dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--muted);
+    flex-shrink: 0;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dot:hover { border-color: var(--fg); }
+  .task-list li.done .dot {
+    border-color: var(--done);
+    background: var(--done);
+  }
+  .task-list li.done .dot::after {
+    content: '';
+    width: 5px;
+    height: 9px;
+    border: 1.5px solid var(--bg);
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+    display: block;
+  }
 
   .task-label {
     font-size: 1rem;
@@ -783,9 +811,11 @@
     row.className = 'task-row';
     li.appendChild(row);
 
-    const dot = document.createElement('span');
+    const dot = document.createElement('button');
     const lbl = document.createElement('span');
     dot.className = 'dot';
+    dot.title = t.done ? 'Als offen markieren' : 'Als erledigt markieren';
+    dot.addEventListener('click', e => { e.stopPropagation(); toggleDone(t.id); });
     lbl.className = 'task-label';
     lbl.textContent = t.text;
 
@@ -859,7 +889,6 @@
     row.appendChild(grp);
 
     li._taskId = t.id;
-    row.addEventListener('click', e => { if (!li.classList.contains('dragging')) toggleDone(t.id); });
 
     li.draggable = true;
     li.addEventListener('dragstart', e => {
