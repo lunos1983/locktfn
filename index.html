@@ -512,6 +512,8 @@
   .sub-action-btn svg { width: 12px; height: 12px; }
   .sub-action-btn.edit-btn svg { width: 16px; height: 16px; }
   .subtask-row:hover .sub-action-btn { opacity: 1; }
+  .sub-wait-active { opacity: 1 !important; color: #f97316 !important; }
+  .subtask-row.sub-waiting .subtask-lbl { color: #f97316; }
 
   .subtask-btn.active { color: var(--fg); opacity: 1 !important; }
 
@@ -770,6 +772,7 @@
   const SUBTASK_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><line x1="7.5" y1="4.5" x2="14" y2="4.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><rect x="1.5" y="9.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1"/><line x1="7.5" y1="11.5" x2="14" y2="11.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>`;
   const FOCUS_SVG   = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 1 L4 9 H8 L6 15 L12 7 H8.5 Z" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const ROCKET_SVG  = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5 C5.5 3.5 4.5 7 4.5 9.5 L8 11.5 L11.5 9.5 C11.5 7 10.5 3.5 8 1.5Z" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.5" r="1.3" stroke="currentColor" stroke-width="1"/><path d="M4.5 9.5 L2.5 11.5 L4.5 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 9.5 L13.5 11.5 L11.5 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 11.5 C6 13.5 8 14.5 8 14.5 C8 14.5 10 13.5 9.5 11.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+  const WAIT_SVG    = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1"/><path d="M7 4V7.2L9.2 9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   function makeItem(t, inFocus) {
     const li  = document.createElement('li');
@@ -886,12 +889,14 @@
     progressZone.classList.remove('drop-active');
   }
 
+  function clearSubWait(t) { (t.subtasks || []).forEach(s => { s.wait = false; }); }
+
   function applyDrop() {
     if (dragId === null) return;
     if (dragToFocus) {
       tasks.forEach(t => { t.focus = false; });
       const t = tasks.find(t => t.id === dragId);
-      if (t && !t.done) { t.focus = true; t.inProgress = false; }
+      if (t && !t.done) { t.focus = true; t.inProgress = false; clearSubWait(t); }
     } else if (dragToProgress) {
       const t = tasks.find(t => t.id === dragId);
       if (t && !t.done) { t.inProgress = true; t.focus = false; }
@@ -900,7 +905,7 @@
       const toIdx   = tasks.findIndex(t => t.id === dragOver.id);
       if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
         const [item] = tasks.splice(fromIdx, 1);
-        item.focus = false; item.inProgress = false;
+        item.focus = false; item.inProgress = false; clearSubWait(item);
         const insertAt = tasks.findIndex(t => t.id === dragOver.id);
         tasks.splice(insertAt + (dragOver.pos === 'bottom' ? 1 : 0), 0, item);
       }
@@ -955,7 +960,7 @@
 
     t.subtasks.forEach((s) => {
       const row = document.createElement('div');
-      row.className = 'subtask-row' + (s.done ? ' done' : '');
+      row.className = 'subtask-row' + (s.done ? ' done' : '') + (s.wait && !s.done ? ' sub-waiting' : '');
       row.draggable = true;
       const dot = document.createElement('span');
       dot.className = 'subtask-dot';
@@ -1014,8 +1019,22 @@
         save(); render();
       });
 
+      const subWaitBtn = document.createElement('button');
+      subWaitBtn.className = 'edit-btn sub-action-btn' + (s.wait && !s.done ? ' sub-wait-active' : '');
+      subWaitBtn.innerHTML = WAIT_SVG;
+      subWaitBtn.title = s.wait ? 'Wait aufheben' : 'Als Wait markieren';
+      subWaitBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        s.wait = !s.wait;
+        if (s.wait) {
+          t.subtasks.forEach(x => { if (x.id !== s.id) x.wait = false; });
+        }
+        save(); render();
+      });
+
       const subGrp = document.createElement('div');
       subGrp.className = 'btn-group sub-btn-group';
+      subGrp.appendChild(subWaitBtn);
       subGrp.appendChild(subPromoteBtn);
       subGrp.appendChild(subEditBtn);
       subGrp.appendChild(subDelBtn);
@@ -1155,9 +1174,13 @@
     doneAllList.innerHTML   = '';
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
+    function hasWaitingSubtask(t) {
+      const undone = (t.subtasks || []).filter(s => !s.done);
+      return undone.length > 0 && !!undone[0].wait;
+    }
     const focusTask    = tasks.find(t => t.focus && !t.done);
-    const progressArr  = tasks.filter(t => t.inProgress && !t.done && !t.focus);
-    const laterArr     = tasks.filter(t => !t.done && !t.focus && !t.inProgress);
+    const progressArr  = tasks.filter(t => !t.done && !t.focus && (t.inProgress || hasWaitingSubtask(t)));
+    const laterArr     = tasks.filter(t => !t.done && !t.focus && !t.inProgress && !hasWaitingSubtask(t));
     const doneTodayArr = tasks.filter(t => t.done && t.doneAt && (now - t.doneAt) < DAY);
     const doneAllArr   = tasks.filter(t => t.done && (!t.doneAt || (now - t.doneAt) >= DAY));
     function appendWithPanel(list, t, inFocus) {
