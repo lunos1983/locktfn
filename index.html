@@ -1030,9 +1030,6 @@
       subWaitBtn.addEventListener('click', e => {
         e.stopPropagation();
         s.wait = !s.wait;
-        if (s.wait) {
-          t.subtasks.forEach(x => { if (x.id !== s.id) x.wait = false; });
-        }
         save(); render();
       });
 
@@ -1179,8 +1176,7 @@
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
     function hasWaitingSubtask(t) {
-      const undone = (t.subtasks || []).filter(s => !s.done);
-      return undone.length > 0 && !!undone[0].wait;
+      return (t.subtasks || []).some(s => !s.done && s.wait);
     }
     const focusTask    = tasks.find(t => t.focus && !t.done);
     const progressArr  = tasks.filter(t => !t.done && !t.focus && (t.inProgress || hasWaitingSubtask(t)));
