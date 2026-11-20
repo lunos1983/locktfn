@@ -160,12 +160,10 @@
   .task-list li {
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid var(--divider);
     cursor: grab;
     user-select: none;
   }
   .task-list li:active { cursor: grabbing; }
-  .task-list li:first-child { border-top: 1px solid var(--divider); }
 
   .task-row {
     display: flex;
@@ -440,7 +438,6 @@
     padding: 15px 0;
     color: var(--muted);
     font-size: 0.9375rem;
-    border-top: 1px solid var(--divider);
   }
 
   .task-list li.dragging { opacity: 0.35; }
