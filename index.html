@@ -1121,8 +1121,27 @@
     const t = tasks.find(t => t.id === id);
     if (!t) return;
     t.done = !t.done;
-    if (t.done) { t.focus = false; t.inProgress = false; t.doneAt = Date.now(); }
-    else { t.doneAt = null; }
+    if (t.done) {
+      t.focus = false; t.inProgress = false; t.doneAt = Date.now();
+      const subs = (t.subtasks || []).filter(s => !s.done);
+      if (subs.length > 0) {
+        const next = subs[0];
+        const remaining = subs.slice(1);
+        const doneOld = { id: t.id, text: t.text, done: true };
+        const newTask = {
+          id: Date.now(),
+          text: next.text,
+          done: false,
+          focus: t.focus || false,
+          inProgress: t.inProgress || false,
+          goalId: t.goalId || null,
+          subtasks: [...remaining, ...(t.subtasks || []).filter(s => s.done), doneOld],
+          open: t.open
+        };
+        const idx = tasks.indexOf(t);
+        tasks.splice(idx, 1, newTask);
+      }
+    } else { t.doneAt = null; }
     save(); render();
   }
 
